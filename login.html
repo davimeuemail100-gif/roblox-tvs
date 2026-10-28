@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Log In - Roblox TVs</title>
+    <style>
+        body { background: #111; color: white; font-family: monospace; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .box { background: #222; padding: 30px; border-radius: 10px; border: 1px solid #444; width: 300px; }
+        input { width: 100%; padding: 10px; margin: 10px 0; background: #111; border: 1px solid #555; color: white; box-sizing: border-box; }
+        button { width: 100%; padding: 10px; background: #007bff; color: white; border: none; cursor: pointer; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="box">
+        <h2>Log In</h2>
+        <input type="text" id="user" placeholder="Usuário">
+        <input type="password" id="pass" placeholder="Senha">
+        <button onclick="fazerLogin()">Entrar</button>
+    </div>
+
+    <script>
+        function fazerLogin() {
+            const user = document.getElementById('user').value;
+            const pass = document.getElementById('pass').value;
+            const hwidFalso = "HWID-" + Math.random().toString(36).substring(2, 10).toUpperCase();
+
+            if (user === "Primo" && pass === "@+$-&$-+#&3#_#&") {
+                localStorage.setItem('cargo', 'Moderator');
+                localStorage.setItem('hwid', hwidFalso);
+                alert(`Bem-vindo Moderator! Seu HWID: ${hwidFalso}`);
+                window.location.href = '/';
+            } else if (user === "SupremeOwner" && pass === "293873738#&@-_&#&-@&$-@&_") {
+                localStorage.setItem('cargo', 'Supreme Owner');
+                window.location.href = '/adminCommands';
+            } else {
+                alert("Usuário ou senha incorretos.");
+            }
+        }
+    </script>
+</body>
+</html>
