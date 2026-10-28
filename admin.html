@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Commands</title>
+    <style>
+        body { background: #111; color: #00ff00; font-family: monospace; padding: 20px; }
+        .user { border: 1px solid #333; padding: 10px; margin-bottom: 10px; }
+        button { background: #d9534f; color: white; border: none; padding: 5px 10px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>Painel do Supreme Owner</h1>
+    <div id="lista"></div>
+
+    <script>
+        const cargo = localStorage.getItem('cargo');
+        if (cargo !== 'Supreme Owner') {
+            alert("Acesso negado! Faça login como dono.");
+            window.location.href = '/log-in';
+        }
+
+        // ⚠️ COLOQUE O SEU LINK DO PLAYIT.GG AQUI ⚠️
+        const ws = new WebSocket(`wss://SEU-TUNEL-PLAYIT.gg`);
+
+        const jogadores = [
+            { nome: "Primo", cargo: "Moderator", hwid: localStorage.getItem('hwid') || "Desconhecido" }
+        ];
+
+        const listaDiv = document.getElementById('lista');
+        jogadores.forEach(j => {
+            listaDiv.innerHTML += `
+                <div class="user">
+                    <strong>Nome:</strong> ${j.nome} | <strong>Cargo:</strong> ${j.cargo} | <strong>HWID:</strong> ${j.hwid}
+                    <br><br>
+                    <button onclick="banir('${j.nome}')">Expulsar (Kick)</button>
+                    <button onclick="darFly()" style="background:#007bff;">Ativar Fly no Jogo</button>
+                </div>
+            `;
+        });
+
+        function banir(nome) {
+            if (ws.readyState === WebSocket.OPEN) {
+                ws.send(`admin:kick:${nome}`);
+                alert(`${nome} foi expulso da TV!`);
+            } else {
+                alert("Servidor offline. Verifique o Winlator.");
+            }
+        }
+
+        function darFly() {
+            if (ws.readyState === WebSocket.OPEN) {
+                ws.send(`admin:fly:on`);
+                alert(`Fly ativado no servidor!`);
+            }
+        }
+    </script>
+</body>
+</html>
