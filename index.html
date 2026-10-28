@@ -7,7 +7,9 @@
     <style>
         body { margin: 0; overflow: hidden; background: #87CEEB; font-family: monospace; }
         #game-canvas { width: 100vw; height: 100vh; display: block; }
-        #console-container { position: absolute; bottom: 0; left: 0; width: 100%; height: 150px; background: rgba(0, 0, 0, 0.85); color: #0f0; display: flex; flex-direction: column; transform: translateY(100%); transition: transform 0.3s; z-index: 10; }
+        
+        /* O Console */
+        #console-container { position: absolute; bottom: 0; left: 0; width: 100%; height: 180px; background: rgba(0, 0, 0, 0.85); color: #0f0; display: flex; flex-direction: column; transform: translateY(100%); transition: transform 0.3s; z-index: 10; }
         #console-container.open { transform: translateY(0); }
         #console-logs { flex: 1; overflow-y: auto; padding: 5px; font-size: 12px; }
         #console-input { width: 100%; background: transparent; border: none; border-top: 1px solid #333; color: white; padding: 10px; outline: none; font-family: monospace; }
@@ -18,29 +20,31 @@
 <body>
     <div id="hud">Status: Conectando...</div>
     <div id="game-canvas"></div>
+    
     <div id="console-container">
-        <div id="console-logs">Digite 'help' para ver os comandos.</div>
-        <input type="text" id="console-input" placeholder="Comando..." onkeydown="processCommand(event)">
+        <div id="console-logs">Terminal Iniciado. Digite 'help'.</div>
+        <input type="text" id="console-input" placeholder="Comando e Enter..." onkeydown="processCommand(event)">
     </div>
 
     <script>
-        // ⚠️ COLOQUE O SEU LINK DO PLAYIT.GG AQUI ⚠️
-        const WS_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? `ws://${window.location.hostname}:8080` : `wss://SEU-TUNEL-PLAYIT.gg`;
-        
+        // ⚠️ COLOQUE O LINK DO SEU TÚNEL AQUI ⚠️
+        const WS_URL = `wss://SEU-TUNEL-PLAYIT.gg`; 
         let ws = new WebSocket(WS_URL);
+        
         let isFlying = false;
         let speed = 0.2;
 
         ws.onopen = () => document.getElementById('hud').innerText = "Conectado!";
+        ws.onclose = () => document.getElementById('hud').innerText = "Desconectado do Winlator.";
         ws.onmessage = (event) => {
-            const msg = event.data;
-            if (msg === "kick") {
+            if (event.data === "kick") {
                 alert("Você foi expulso pelo Administrador.");
                 window.location.href = "/log-in";
             }
-            log(`[Servidor] ${msg}`);
+            log(`[Servidor] ${event.data}`);
         };
 
+        // Motor 3D (Three.js)
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x87CEEB);
         const camera = new THREE.PerspectiveCamera(70, window.innerWidth/window.innerHeight, 0.1, 1000);
@@ -50,16 +54,25 @@
 
         const floor = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), new THREE.MeshLambertMaterial({color: 0x555555}));
         floor.rotation.x = -Math.PI / 2; scene.add(floor);
+        
         const player = new THREE.Group();
         const torso = new THREE.Mesh(new THREE.BoxGeometry(2, 2, 1), new THREE.MeshLambertMaterial({color: 0x0D69A9}));
         torso.position.y = 1.5; player.add(torso);
+        const head = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.2, 1.2), new THREE.MeshLambertMaterial({color: 0xF5CD30}));
+        head.position.y = 3.1; player.add(head);
         scene.add(player);
+
         scene.add(new THREE.AmbientLight(0xffffff, 0.6));
         const dirLight = new THREE.DirectionalLight(0xffffff, 0.8); dirLight.position.set(10, 20, 10); scene.add(dirLight);
 
+        // Controles
         let keys = {};
-        document.addEventListener('keydown', (e) => { keys[e.key.toLowerCase()] = true; if(e.key === '`') toggleConsole(); });
+        document.addEventListener('keydown', (e) => { 
+            keys[e.key.toLowerCase()] = true; 
+            if(e.key === '`') toggleConsole(); // Tecla ` abre o console
+        });
         document.addEventListener('keyup', (e) => { keys[e.key.toLowerCase()] = false; });
+        
         let camYaw = 0, camPitch = 0.3, isDragging = false;
         document.addEventListener('mousedown', () => isDragging = true);
         document.addEventListener('mouseup', () => isDragging = false);
@@ -67,24 +80,37 @@
             if (isDragging) { camYaw -= e.movementX * 0.005; camPitch -= e.movementY * 0.005; }
         });
 
+        // Lógica do Terminal
         function toggleConsole() {
             document.getElementById('console-container').classList.toggle('open');
-            if (document.getElementById('console-container').classList.contains('open')) document.getElementById('console-input').focus();
+            if (document.getElementById('console-container').classList.contains('open')) {
+                document.getElementById('console-input').focus();
+            }
         }
+
         function log(msg) {
             const logs = document.getElementById('console-logs');
             logs.innerHTML += `<br>> ${msg}`;
             logs.scrollTop = logs.scrollHeight;
         }
+
         function processCommand(event) {
             if (event.key === 'Enter') {
                 const cmd = document.getElementById('console-input').value.trim().toLowerCase();
                 document.getElementById('console-input').value = '';
-                if (cmd === 'help') log("Comandos: fly, unfly, speed [num]");
-                else if (cmd === 'fly') { isFlying = true; log("Modo Fly ATIVADO."); }
-                else if (cmd === 'unfly') { isFlying = false; log("Modo Fly DESATIVADO."); }
-                else if (cmd.startsWith('speed ')) { speed = parseFloat(cmd.split(' ')[1]) || 0.2; log(`Velocidade: ${speed}`); }
-                else log("Comando desconhecido.");
+                
+                if (cmd === 'help') {
+                    log("Comandos: fly, unfly, speed [numero]");
+                } else if (cmd === 'fly') {
+                    isFlying = true; log("Modo Voo ATIVADO.");
+                } else if (cmd === 'unfly') {
+                    isFlying = false; log("Modo Voo DESATIVADO.");
+                } else if (cmd.startsWith('speed ')) {
+                    speed = parseFloat(cmd.split(' ')[1]) || 0.2;
+                    log(`Velocidade alterada para: ${speed}`);
+                } else {
+                    log(`Comando '${cmd}' desconhecido.`);
+                }
             }
         }
 
@@ -92,17 +118,22 @@
             requestAnimationFrame(animate);
             const forward = new THREE.Vector3(-Math.sin(camYaw), 0, -Math.cos(camYaw));
             const right = new THREE.Vector3(Math.cos(camYaw), 0, -Math.sin(camYaw));
+
+            // Envia comandos para o Winlator
             if (keys['w']) { player.position.add(forward.clone().multiplyScalar(speed)); ws.send("input:W"); }
             if (keys['s']) { player.position.sub(forward.clone().multiplyScalar(speed)); ws.send("input:S"); }
             if (keys['a']) { player.position.sub(right.clone().multiplyScalar(speed)); ws.send("input:A"); }
             if (keys['d']) { player.position.add(right.clone().multiplyScalar(speed)); ws.send("input:D"); }
+
             if (isFlying) {
-                if (keys[' ']) player.position.y += speed;
-                if (keys['shift']) player.position.y -= speed;
+                if (keys[' ']) { player.position.y += speed; ws.send("input:SPACE"); }
+                if (keys['shift']) { player.position.y -= speed; ws.send("input:SHIFT"); }
             }
+
             const camX = player.position.x + Math.sin(camYaw) * 15 * Math.cos(camPitch);
             const camZ = player.position.z + Math.cos(camYaw) * 15 * Math.cos(camPitch);
             const camY = player.position.y + 2 + Math.sin(camPitch) * 15;
+            
             camera.position.set(camX, camY, camZ);
             camera.lookAt(player.position.x, player.position.y + 2, player.position.z);
             renderer.render(scene, camera);
