@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Sign In - Roblox TVs</title>
+    <style>
+        body { background: #111; color: white; font-family: monospace; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .box { background: #222; padding: 30px; border-radius: 10px; border: 1px solid #444; width: 300px; }
+        input, button { width: 100%; padding: 10px; margin: 10px 0; background: #111; border: 1px solid #555; color: white; box-sizing: border-box; }
+        button { background: #28a745; border: none; font-weight: bold; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <div class="box">
+        <h2>Criar Conta VIP</h2>
+        <p>Preço: R$ 40,09</p>
+        <input type="text" id="cupom" placeholder="Código de Desconto">
+        <button onclick="comprar()">Pagar com Pix / Bitcoin</button>
+    </div>
+
+    <script>
+        async function comprar() {
+            const cupom = document.getElementById('cupom').value;
+            const response = await fetch('/api/validar', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ cupom })
+            });
+            const data = await response.json();
+            if (data.aprovado) {
+                alert("Desconto aplicado! Redirecionando...");
+                window.location.href = data.link_pagamento;
+            } else {
+                alert("Cupom inválido. O valor é R$ 40,09.");
+            }
+        }
+    </script>
+</body>
+</html>
