@@ -8,8 +8,8 @@
         body { margin: 0; overflow: hidden; background: #87CEEB; font-family: monospace; }
         #game-canvas { width: 100vw; height: 100vh; display: block; }
         
-        /* O Console */
-        #console-container { position: absolute; bottom: 0; left: 0; width: 100%; height: 180px; background: rgba(0, 0, 0, 0.85); color: #0f0; display: flex; flex-direction: column; transform: translateY(100%); transition: transform 0.3s; z-index: 10; }
+        /* O Console (Terminal) */
+        #console-container { position: absolute; bottom: 0; left: 0; width: 100%; height: 150px; background: rgba(0, 0, 0, 0.85); color: #0f0; display: flex; flex-direction: column; transform: translateY(100%); transition: transform 0.3s; z-index: 10; }
         #console-container.open { transform: translateY(0); }
         #console-logs { flex: 1; overflow-y: auto; padding: 5px; font-size: 12px; }
         #console-input { width: 100%; background: transparent; border: none; border-top: 1px solid #333; color: white; padding: 10px; outline: none; font-family: monospace; }
@@ -27,24 +27,40 @@
     </div>
 
     <script>
-        // ⚠️ COLOQUE O LINK DO SEU TÚNEL AQUI ⚠️
-        const WS_URL = `wss://SEU-TUNEL-PLAYIT.gg`; 
+        // ⚠️ COLOQUE O LINK DO BORE AQUI ⚠️
+        // O Bore te dá algo como bore.pub:12345. Coloque wss:// na frente.
+        const BORE_LINK = "bore.pub:12345"; // MUDE ISSO
+        const WS_URL = `wss://${BORE_LINK}`; 
+        
         let ws = new WebSocket(WS_URL);
         
         let isFlying = false;
         let speed = 0.2;
 
-        ws.onopen = () => document.getElementById('hud').innerText = "Conectado!";
-        ws.onclose = () => document.getElementById('hud').innerText = "Desconectado do Winlator.";
+        ws.onopen = () => {
+            document.getElementById('hud').innerText = "Conectado!";
+            log("[Sistema] Conectado ao servidor via Bore.");
+        };
+        
+        ws.onclose = () => {
+            document.getElementById('hud').innerText = "Desconectado.";
+            log("[Erro] O túnel do Bore caiu ou foi bloqueado.");
+        };
+        
+        ws.onerror = (err) => {
+            log("[Erro] Falha na conexão. O Bore tem SSL?");
+        };
+
         ws.onmessage = (event) => {
-            if (event.data === "kick") {
+            const msg = event.data;
+            if (msg === "kick") {
                 alert("Você foi expulso pelo Administrador.");
                 window.location.href = "/log-in";
             }
-            log(`[Servidor] ${event.data}`);
+            log(`[Servidor] ${msg}`);
         };
 
-        // Motor 3D (Three.js)
+        // Motor 3D
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x87CEEB);
         const camera = new THREE.PerspectiveCamera(70, window.innerWidth/window.innerHeight, 0.1, 1000);
@@ -69,7 +85,7 @@
         let keys = {};
         document.addEventListener('keydown', (e) => { 
             keys[e.key.toLowerCase()] = true; 
-            if(e.key === '`') toggleConsole(); // Tecla ` abre o console
+            if(e.key === '`') toggleConsole(); 
         });
         document.addEventListener('keyup', (e) => { keys[e.key.toLowerCase()] = false; });
         
@@ -80,7 +96,7 @@
             if (isDragging) { camYaw -= e.movementX * 0.005; camPitch -= e.movementY * 0.005; }
         });
 
-        // Lógica do Terminal
+        // Terminal
         function toggleConsole() {
             document.getElementById('console-container').classList.toggle('open');
             if (document.getElementById('console-container').classList.contains('open')) {
@@ -107,7 +123,7 @@
                     isFlying = false; log("Modo Voo DESATIVADO.");
                 } else if (cmd.startsWith('speed ')) {
                     speed = parseFloat(cmd.split(' ')[1]) || 0.2;
-                    log(`Velocidade alterada para: ${speed}`);
+                    log(`Velocidade: ${speed}`);
                 } else {
                     log(`Comando '${cmd}' desconhecido.`);
                 }
@@ -119,15 +135,14 @@
             const forward = new THREE.Vector3(-Math.sin(camYaw), 0, -Math.cos(camYaw));
             const right = new THREE.Vector3(Math.cos(camYaw), 0, -Math.sin(camYaw));
 
-            // Envia comandos para o Winlator
-            if (keys['w']) { player.position.add(forward.clone().multiplyScalar(speed)); ws.send("input:W"); }
-            if (keys['s']) { player.position.sub(forward.clone().multiplyScalar(speed)); ws.send("input:S"); }
-            if (keys['a']) { player.position.sub(right.clone().multiplyScalar(speed)); ws.send("input:A"); }
-            if (keys['d']) { player.position.add(right.clone().multiplyScalar(speed)); ws.send("input:D"); }
+            if (keys['w']) { player.position.add(forward.clone().multiplyScalar(speed)); if(ws.readyState === 1) ws.send("input:W"); }
+            if (keys['s']) { player.position.sub(forward.clone().multiplyScalar(speed)); if(ws.readyState === 1) ws.send("input:S"); }
+            if (keys['a']) { player.position.sub(right.clone().multiplyScalar(speed)); if(ws.readyState === 1) ws.send("input:A"); }
+            if (keys['d']) { player.position.add(right.clone().multiplyScalar(speed)); if(ws.readyState === 1) ws.send("input:D"); }
 
             if (isFlying) {
-                if (keys[' ']) { player.position.y += speed; ws.send("input:SPACE"); }
-                if (keys['shift']) { player.position.y -= speed; ws.send("input:SHIFT"); }
+                if (keys[' ']) { player.position.y += speed; if(ws.readyState === 1) ws.send("input:SPACE"); }
+                if (keys['shift']) { player.position.y -= speed; if(ws.readyState === 1) ws.send("input:SHIFT"); }
             }
 
             const camX = player.position.x + Math.sin(camYaw) * 15 * Math.cos(camPitch);
