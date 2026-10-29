@@ -8,10 +8,13 @@
         .panel { border: 1px solid #333; padding: 20px; max-width: 400px; background: #1a1a1a;}
         button { background: #d9534f; color: white; border: none; padding: 10px 20px; cursor: pointer; font-weight: bold; margin-top: 10px; width: 100%; margin-bottom: 10px; }
         .fly-btn { background: #007bff; }
+        #status { font-size: 14px; margin-bottom: 20px; }
     </style>
 </head>
 <body>
     <h1>Painel do Supreme Owner</h1>
+    <div id="status">Status: Desconectado</div>
+    
     <div class="panel">
         <h3>Jogador: Primo (Moderator)</h3>
         <button onclick="comando('admin:kick')">EXPULSAR (Kick)</button>
@@ -20,15 +23,29 @@
     </div>
 
     <script>
-        // ⚠️ COLOQUE O LINK DO SEU TÚNEL AQUI ⚠️
-        const ws = new WebSocket('wss://bore.pub:15756');
+        // ⚠️ COLOQUE A PORTA DO BORE AQUI (sem o wss://) ⚠️
+        // Exemplo: se o Bore deu "bore.pub:15756", coloque só "bore.pub:15756"
+        const BORE_LINK = "bore.pub:15756"; 
+        
+        const ws = new WebSocket(`wss://${BORE_LINK}`);
+        const statusDiv = document.getElementById('status');
+
+        ws.onopen = () => {
+            statusDiv.innerText = "Status: Conectado ao Servidor!";
+            statusDiv.style.color = "#00ff00";
+        };
+
+        ws.onclose = () => {
+            statusDiv.innerText = "Status: Desconectado (O Bore caiu ou a porta mudou?)";
+            statusDiv.style.color = "#ff0000";
+        };
 
         function comando(cmd) {
             if (ws.readyState === WebSocket.OPEN) {
                 ws.send(cmd);
                 alert(`Comando enviado: ${cmd}`);
             } else {
-                alert("Erro: O servidor no Winlator está offline.");
+                alert("Erro: O servidor no Winlator está offline ou a porta do Bore mudou.");
             }
         }
     </script>
