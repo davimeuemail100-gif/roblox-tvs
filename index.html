@@ -2,23 +2,20 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>RCC Cloud Gaming</title>
     <style>
         body { margin: 0; overflow: hidden; background: #87CEEB; font-family: monospace; }
         #game-canvas { width: 100vw; height: 100vh; display: block; }
-        
-        /* O Console (Terminal) */
         #console-container { position: absolute; bottom: 0; left: 0; width: 100%; height: 150px; background: rgba(0, 0, 0, 0.85); color: #0f0; display: flex; flex-direction: column; transform: translateY(100%); transition: transform 0.3s; z-index: 10; }
         #console-container.open { transform: translateY(0); }
         #console-logs { flex: 1; overflow-y: auto; padding: 5px; font-size: 12px; }
-        #console-input { width: 100%; background: transparent; border: none; border-top: 1px solid #333; color: white; padding: 10px; outline: none; font-family: monospace; }
-        #hud { position: absolute; top: 10px; left: 10px; color: white; background: rgba(0,0,0,0.5); padding: 5px; border-radius: 5px; font-size: 14px; }
+        #console-input { width: 100%; background: transparent; border: none; border-top: 1px solid #333; color: white; padding: 10px; outline: none; }
+        #hud { position: absolute; top: 10px; left: 10px; color: white; background: rgba(0,0,0,0.5); padding: 5px; border-radius: 5px; }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
-    <div id="hud">Status: Conectando...</div>
+    <div id="hud">Status: Buscando servidor...</div>
     <div id="game-canvas"></div>
     
     <div id="console-container">
@@ -27,39 +24,42 @@
     </div>
 
     <script>
-        // ⚠️ COLOQUE O LINK DO BORE AQUI ⚠️
-        // O Bore te dá algo como bore.pub:12345. Coloque wss:// na frente.
-        const BORE_LINK = "bore.pub:15756"; 
-        
-        const ws = new WebSocket(`wss://${BORE_LINK}`);
-        
-        let ws = new WebSocket(WS_URL);
-        
+        let ws;
         let isFlying = false;
         let speed = 0.2;
 
-        ws.onopen = () => {
-            document.getElementById('hud').innerText = "Conectado!";
-            log("[Sistema] Conectado ao servidor via Bore.");
-        };
-        
-        ws.onclose = () => {
-            document.getElementById('hud').innerText = "Desconectado.";
-            log("[Erro] O túnel do Bore caiu ou foi bloqueado.");
-        };
-        
-        ws.onerror = (err) => {
-            log("[Erro] Falha na conexão. O Bore tem SSL?");
-        };
+        // Busca a porta do Bore no GitHub automaticamente (Repositório: roblox-tvs)
+        fetch('https://raw.githubusercontent.com/davimeuemail100-gif/roblox-tvs/main/porta.txt')
+            .then(res => res.text())
+            .then(port => {
+                const portaLimpa = port.trim();
+                if(!portaLimpa) return log("Erro: Porta vazia no GitHub.");
+                
+                const WS_URL = `wss://bore.pub:${portaLimpa}`;
+                document.getElementById('hud').innerText = "Conectando na porta " + portaLimpa;
+                
+                ws = new WebSocket(WS_URL);
+                
+                ws.onopen = () => {
+                    document.getElementById('hud').innerText = "Conectado!";
+                    document.getElementById('hud').style.background = "rgba(0,255,0,0.5)";
+                    log("[Sistema] Conectado com sucesso!");
+                };
+                
+                ws.onclose = () => {
+                    document.getElementById('hud').innerText = "Desconectado";
+                    document.getElementById('hud').style.background = "rgba(255,0,0,0.5)";
+                    log("[Erro] Túnel caiu.");
+                };
 
-        ws.onmessage = (event) => {
-            const msg = event.data;
-            if (msg === "kick") {
-                alert("Você foi expulso pelo Administrador.");
-                window.location.href = "/log-in";
-            }
-            log(`[Servidor] ${msg}`);
-        };
+                ws.onmessage = (event) => {
+                    if (event.data === "kick") {
+                        alert("Você foi expulso pelo Administrador.");
+                        window.location.href = "login.html";
+                    }
+                    log(`[Servidor] ${event.data}`);
+                };
+            }).catch(err => log("Erro ao buscar GitHub: " + err));
 
         // Motor 3D
         const scene = new THREE.Scene();
@@ -82,12 +82,8 @@
         scene.add(new THREE.AmbientLight(0xffffff, 0.6));
         const dirLight = new THREE.DirectionalLight(0xffffff, 0.8); dirLight.position.set(10, 20, 10); scene.add(dirLight);
 
-        // Controles
         let keys = {};
-        document.addEventListener('keydown', (e) => { 
-            keys[e.key.toLowerCase()] = true; 
-            if(e.key === '`') toggleConsole(); 
-        });
+        document.addEventListener('keydown', (e) => { keys[e.key.toLowerCase()] = true; if(e.key === '`') toggleConsole(); });
         document.addEventListener('keyup', (e) => { keys[e.key.toLowerCase()] = false; });
         
         let camYaw = 0, camPitch = 0.3, isDragging = false;
@@ -97,37 +93,24 @@
             if (isDragging) { camYaw -= e.movementX * 0.005; camPitch -= e.movementY * 0.005; }
         });
 
-        // Terminal
         function toggleConsole() {
             document.getElementById('console-container').classList.toggle('open');
-            if (document.getElementById('console-container').classList.contains('open')) {
-                document.getElementById('console-input').focus();
-            }
+            if (document.getElementById('console-container').classList.contains('open')) document.getElementById('console-input').focus();
         }
-
         function log(msg) {
             const logs = document.getElementById('console-logs');
             logs.innerHTML += `<br>> ${msg}`;
             logs.scrollTop = logs.scrollHeight;
         }
-
         function processCommand(event) {
             if (event.key === 'Enter') {
                 const cmd = document.getElementById('console-input').value.trim().toLowerCase();
                 document.getElementById('console-input').value = '';
-                
-                if (cmd === 'help') {
-                    log("Comandos: fly, unfly, speed [numero]");
-                } else if (cmd === 'fly') {
-                    isFlying = true; log("Modo Voo ATIVADO.");
-                } else if (cmd === 'unfly') {
-                    isFlying = false; log("Modo Voo DESATIVADO.");
-                } else if (cmd.startsWith('speed ')) {
-                    speed = parseFloat(cmd.split(' ')[1]) || 0.2;
-                    log(`Velocidade: ${speed}`);
-                } else {
-                    log(`Comando '${cmd}' desconhecido.`);
-                }
+                if (cmd === 'help') log("Comandos: fly, unfly, speed [num]");
+                else if (cmd === 'fly') { isFlying = true; log("Modo Fly ATIVADO."); }
+                else if (cmd === 'unfly') { isFlying = false; log("Modo Fly DESATIVADO."); }
+                else if (cmd.startsWith('speed ')) { speed = parseFloat(cmd.split(' ')[1]) || 0.2; log(`Velocidade: ${speed}`); }
+                else log("Comando desconhecido.");
             }
         }
 
@@ -136,14 +119,14 @@
             const forward = new THREE.Vector3(-Math.sin(camYaw), 0, -Math.cos(camYaw));
             const right = new THREE.Vector3(Math.cos(camYaw), 0, -Math.sin(camYaw));
 
-            if (keys['w']) { player.position.add(forward.clone().multiplyScalar(speed)); if(ws.readyState === 1) ws.send("input:W"); }
-            if (keys['s']) { player.position.sub(forward.clone().multiplyScalar(speed)); if(ws.readyState === 1) ws.send("input:S"); }
-            if (keys['a']) { player.position.sub(right.clone().multiplyScalar(speed)); if(ws.readyState === 1) ws.send("input:A"); }
-            if (keys['d']) { player.position.add(right.clone().multiplyScalar(speed)); if(ws.readyState === 1) ws.send("input:D"); }
+            if (keys['w']) { player.position.add(forward.clone().multiplyScalar(speed)); if(ws && ws.readyState === 1) ws.send("input:W"); }
+            if (keys['s']) { player.position.sub(forward.clone().multiplyScalar(speed)); if(ws && ws.readyState === 1) ws.send("input:S"); }
+            if (keys['a']) { player.position.sub(right.clone().multiplyScalar(speed)); if(ws && ws.readyState === 1) ws.send("input:A"); }
+            if (keys['d']) { player.position.add(right.clone().multiplyScalar(speed)); if(ws && ws.readyState === 1) ws.send("input:D"); }
 
             if (isFlying) {
-                if (keys[' ']) { player.position.y += speed; if(ws.readyState === 1) ws.send("input:SPACE"); }
-                if (keys['shift']) { player.position.y -= speed; if(ws.readyState === 1) ws.send("input:SHIFT"); }
+                if (keys[' ']) { player.position.y += speed; if(ws && ws.readyState === 1) ws.send("input:SPACE"); }
+                if (keys['shift']) { player.position.y -= speed; if(ws && ws.readyState === 1) ws.send("input:SHIFT"); }
             }
 
             const camX = player.position.x + Math.sin(camYaw) * 15 * Math.cos(camPitch);
